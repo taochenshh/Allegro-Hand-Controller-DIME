@@ -97,8 +97,7 @@ private:
 private:
     void _readDevices();                    ///< read CAN messages
     void _writeDevices();                   ///< write CAN messages(torque command)
-    //void _parseMessage(char cmd, char src, char des, int len, unsigned char* data); ///< parse CAN messages and calculate current joint angles from encoder values
-    void _parseMessage(int id, int len, unsigned char* data);
+    void _parseMessage(char cmd, char src, char des, int len, unsigned char* data); ///< parse CAN messages and calculate current joint angles from encoder values
 };
 
 }

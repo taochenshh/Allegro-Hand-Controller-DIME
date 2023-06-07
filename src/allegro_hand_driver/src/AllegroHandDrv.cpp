@@ -52,8 +52,6 @@
 
 using namespace std;
 
-#define MAX_DOF 16
-
 #define PWM_LIMIT_ROLL 250.0*1.5
 #define PWM_LIMIT_NEAR 450.0*1.5
 #define PWM_LIMIT_MIDDLE 300.0*1.5
@@ -66,8 +64,6 @@ using namespace std;
 
 #define PWM_LIMIT_GLOBAL_8V 800.0 // maximum: 1200
 #define PWM_LIMIT_GLOBAL_24V 500.0
-#define PWM_LIMIT_GLOBAL_12V 1200.0
-
 
 namespace allegro
 {
@@ -77,17 +73,124 @@ AllegroHandDrv::AllegroHandDrv()
     , _curr_position_get(0)
     , _emergency_stop(false)
 {
-    ROS_INFO("AllegroHandDrv instance is constructed.");
+
+    if (ros::param::has("~zero")) {
+        _emergency_stop = false;
+        ROS_INFO("CAN: Joint zeros and directions loaded from parameter server.");
+    }
+    else {
+        ROS_ERROR("Encoder/Motor offsets and directions not loaded.");
+        ROS_ERROR("Check launch file is loading /parameters/zero.yaml.");
+        ROS_ERROR("Shutting down...");
+        _emergency_stop = true;
+    }
+
+    // This version number is used to in setting the finger motor CAN channels
+    // the channels used differ from versions 1.0 to 2.0
+
+    ros::param::get("~hand_info/version", _hand_version);
+    if (_hand_version == 3.0)
+        _tau_cov_const = 1200.0;
+    else
+        _tau_cov_const = 800.0;
+    ROS_INFO("Hand Version: %2.1f", _hand_version);
+
+    if (ros::param::has("~hand_info/input_voltage")) {
+        ros::param::get("~hand_info/input_voltage", _input_voltage);
+        if (_input_voltage == 24.0)
+            _pwm_max_global = PWM_LIMIT_GLOBAL_24V;
+        else
+            _pwm_max_global = PWM_LIMIT_GLOBAL_8V;
+    }
+    else {
+        ROS_INFO("Input Voltage is not defined");
+        ROS_INFO("Input Voltage is set as its default value");
+        _input_voltage = 8.0;
+        _pwm_max_global = PWM_LIMIT_GLOBAL_8V;
+    }
+    ROS_INFO("Input Voltage: %.1f Volts", _input_voltage);
+    ROS_INFO("Max. PWM Input: %.1f", _pwm_max_global);
+
+    _pwm_max[eJOINTNAME_INDEX_0] = min(_pwm_max_global, PWM_LIMIT_ROLL);
+    _pwm_max[eJOINTNAME_INDEX_1] = min(_pwm_max_global, PWM_LIMIT_NEAR);
+    _pwm_max[eJOINTNAME_INDEX_2] = min(_pwm_max_global, PWM_LIMIT_MIDDLE);
+    _pwm_max[eJOINTNAME_INDEX_3] = min(_pwm_max_global, PWM_LIMIT_FAR);
+
+    _pwm_max[eJOINTNAME_MIDDLE_0] = min(_pwm_max_global, PWM_LIMIT_ROLL);
+    _pwm_max[eJOINTNAME_MIDDLE_1] = min(_pwm_max_global, PWM_LIMIT_NEAR);
+    _pwm_max[eJOINTNAME_MIDDLE_2] = min(_pwm_max_global, PWM_LIMIT_MIDDLE);
+    _pwm_max[eJOINTNAME_MIDDLE_3] = min(_pwm_max_global, PWM_LIMIT_FAR);
+
+    _pwm_max[eJOINTNAME_PINKY_0] = min(_pwm_max_global, PWM_LIMIT_ROLL);
+    _pwm_max[eJOINTNAME_PINKY_1] = min(_pwm_max_global, PWM_LIMIT_NEAR);
+    _pwm_max[eJOINTNAME_PINKY_2] = min(_pwm_max_global, PWM_LIMIT_MIDDLE);
+    _pwm_max[eJOINTNAME_PINKY_3] = min(_pwm_max_global, PWM_LIMIT_FAR);
+
+    _pwm_max[eJOINTNAME_THUMB_0] = min(_pwm_max_global, PWM_LIMIT_THUMB_ROLL);
+    _pwm_max[eJOINTNAME_THUMB_1] = min(_pwm_max_global, PWM_LIMIT_THUMB_NEAR);
+    _pwm_max[eJOINTNAME_THUMB_2] = min(_pwm_max_global, PWM_LIMIT_THUMB_MIDDLE);
+    _pwm_max[eJOINTNAME_THUMB_3] = min(_pwm_max_global, PWM_LIMIT_THUMB_FAR);
+
+    ros::param::get("~zero/encoder_offset/j00", _encoder_offset[eJOINTNAME_INDEX_0]);
+    ros::param::get("~zero/encoder_offset/j01", _encoder_offset[eJOINTNAME_INDEX_1]);
+    ros::param::get("~zero/encoder_offset/j02", _encoder_offset[eJOINTNAME_INDEX_2]);
+    ros::param::get("~zero/encoder_offset/j03", _encoder_offset[eJOINTNAME_INDEX_3]);
+    ros::param::get("~zero/encoder_offset/j10", _encoder_offset[eJOINTNAME_MIDDLE_0]);
+    ros::param::get("~zero/encoder_offset/j11", _encoder_offset[eJOINTNAME_MIDDLE_1]);
+    ros::param::get("~zero/encoder_offset/j12", _encoder_offset[eJOINTNAME_MIDDLE_2]);
+    ros::param::get("~zero/encoder_offset/j13", _encoder_offset[eJOINTNAME_MIDDLE_3]);
+    ros::param::get("~zero/encoder_offset/j20", _encoder_offset[eJOINTNAME_PINKY_0]);
+    ros::param::get("~zero/encoder_offset/j21", _encoder_offset[eJOINTNAME_PINKY_1]);
+    ros::param::get("~zero/encoder_offset/j22", _encoder_offset[eJOINTNAME_PINKY_2]);
+    ros::param::get("~zero/encoder_offset/j23", _encoder_offset[eJOINTNAME_PINKY_3]);
+    ros::param::get("~zero/encoder_offset/j30", _encoder_offset[eJOINTNAME_THUMB_0]);
+    ros::param::get("~zero/encoder_offset/j31", _encoder_offset[eJOINTNAME_THUMB_1]);
+    ros::param::get("~zero/encoder_offset/j32", _encoder_offset[eJOINTNAME_THUMB_2]);
+    ros::param::get("~zero/encoder_offset/j33", _encoder_offset[eJOINTNAME_THUMB_3]);
+
+    ros::param::get("~zero/encoder_direction/j00", _encoder_direction[eJOINTNAME_INDEX_0]);
+    ros::param::get("~zero/encoder_direction/j01", _encoder_direction[eJOINTNAME_INDEX_1]);
+    ros::param::get("~zero/encoder_direction/j02", _encoder_direction[eJOINTNAME_INDEX_2]);
+    ros::param::get("~zero/encoder_direction/j03", _encoder_direction[eJOINTNAME_INDEX_3]);
+    ros::param::get("~zero/encoder_direction/j10", _encoder_direction[eJOINTNAME_MIDDLE_0]);
+    ros::param::get("~zero/encoder_direction/j11", _encoder_direction[eJOINTNAME_MIDDLE_1]);
+    ros::param::get("~zero/encoder_direction/j12", _encoder_direction[eJOINTNAME_MIDDLE_2]);
+    ros::param::get("~zero/encoder_direction/j13", _encoder_direction[eJOINTNAME_MIDDLE_3]);
+    ros::param::get("~zero/encoder_direction/j20", _encoder_direction[eJOINTNAME_PINKY_0]);
+    ros::param::get("~zero/encoder_direction/j21", _encoder_direction[eJOINTNAME_PINKY_1]);
+    ros::param::get("~zero/encoder_direction/j22", _encoder_direction[eJOINTNAME_PINKY_2]);
+    ros::param::get("~zero/encoder_direction/j23", _encoder_direction[eJOINTNAME_PINKY_3]);
+    ros::param::get("~zero/encoder_direction/j30", _encoder_direction[eJOINTNAME_THUMB_0]);
+    ros::param::get("~zero/encoder_direction/j31", _encoder_direction[eJOINTNAME_THUMB_1]);
+    ros::param::get("~zero/encoder_direction/j32", _encoder_direction[eJOINTNAME_THUMB_2]);
+    ros::param::get("~zero/encoder_direction/j33", _encoder_direction[eJOINTNAME_THUMB_3]);
+
+    ros::param::get("~zero/motor_direction/j00", _motor_direction[eJOINTNAME_INDEX_0]);
+    ros::param::get("~zero/motor_direction/j01", _motor_direction[eJOINTNAME_INDEX_1]);
+    ros::param::get("~zero/motor_direction/j02", _motor_direction[eJOINTNAME_INDEX_2]);
+    ros::param::get("~zero/motor_direction/j03", _motor_direction[eJOINTNAME_INDEX_3]);
+    ros::param::get("~zero/motor_direction/j10", _motor_direction[eJOINTNAME_MIDDLE_0]);
+    ros::param::get("~zero/motor_direction/j11", _motor_direction[eJOINTNAME_MIDDLE_1]);
+    ros::param::get("~zero/motor_direction/j12", _motor_direction[eJOINTNAME_MIDDLE_2]);
+    ros::param::get("~zero/motor_direction/j13", _motor_direction[eJOINTNAME_MIDDLE_3]);
+    ros::param::get("~zero/motor_direction/j20", _motor_direction[eJOINTNAME_PINKY_0]);
+    ros::param::get("~zero/motor_direction/j21", _motor_direction[eJOINTNAME_PINKY_1]);
+    ros::param::get("~zero/motor_direction/j22", _motor_direction[eJOINTNAME_PINKY_2]);
+    ros::param::get("~zero/motor_direction/j23", _motor_direction[eJOINTNAME_PINKY_3]);
+    ros::param::get("~zero/motor_direction/j30", _motor_direction[eJOINTNAME_THUMB_0]);
+    ros::param::get("~zero/motor_direction/j31", _motor_direction[eJOINTNAME_THUMB_1]);
+    ros::param::get("~zero/motor_direction/j32", _motor_direction[eJOINTNAME_THUMB_2]);
+    ros::param::get("~zero/motor_direction/j33", _motor_direction[eJOINTNAME_THUMB_3]);
 }
 
 AllegroHandDrv::~AllegroHandDrv()
 {
     if (_can_handle != 0) {
         ROS_INFO("CAN: System Off");
-        CANAPI::command_set_period(_can_handle, 0);
+        CANAPI::sys_stop(_can_handle);
         usleep(10000);
         ROS_INFO("CAN: Close CAN channel");
-        CANAPI::command_can_close(_can_handle);
+        CANAPI::can_close(_can_handle);
     }
 }
 
@@ -111,33 +214,32 @@ bool AllegroHandDrv::init(int mode)
         return false;
     }
 
-    if (CANAPI::command_can_open_with_name(_can_handle, CAN_CH.c_str())) {
+    if (CANAPI::can_open_with_name(_can_handle, CAN_CH.c_str())) {
         _can_handle = 0;
         return false;
     }
 
     ROS_INFO("CAN: Flush CAN receive buffer");
-    CANAPI::command_can_flush(_can_handle);
+    CANAPI::can_flush(_can_handle);
     usleep(100);
 
     ROS_INFO("CAN: System Off");
-    CANAPI::command_servo_off(_can_handle);
+    CANAPI::sys_stop(_can_handle);
     usleep(100);
 
-    ROS_INFO("CAN: Request Hand Information");
-    CANAPI::request_hand_information(_can_handle);
+    ROS_INFO("CAN: Query firmware information");
+    CANAPI::query_id(_can_handle);
     usleep(100);
 
-    ROS_INFO("CAN: Request Hand Serial");
-    CANAPI::request_hand_serial(_can_handle);
-    usleep(100);
+    //ROS_INFO("CAN: Enable embedded AHRS sensor");
+    //CANAPI::ahrs_init(_can_handle, AHRS_RATE_1Hz, AHRS_MASK_POSE);
+    //usleep(100);
 
     ROS_INFO("CAN: Setting loop period(:= 3ms) and initialize system");
-    short comm_period[3] = {3, 0, 0}; // millisecond {position, imu, temperature}
-    CANAPI::command_set_period(_can_handle, comm_period);
+    CANAPI::sys_init(_can_handle, 3);
 
     ROS_INFO("CAN: System ON");
-    CANAPI::command_servo_on(_can_handle);
+    CANAPI::sys_start(_can_handle);
     usleep(100);
 
     ROS_INFO("CAN: Communicating");
@@ -192,12 +294,11 @@ void AllegroHandDrv::setTorque(double *torque)
     else if (_hand_version >= 2.0) {
         // for Allegro Hand v2.0
         for (int findex = 0; findex < 4; findex++) {
-            _desired_torque[4*findex+0] = torque[4*findex+0];
-            _desired_torque[4*findex+1] = torque[4*findex+1];
-            _desired_torque[4*findex+2] = torque[4*findex+2];
-            _desired_torque[4*findex+3] = torque[4*findex+3];
+            _desired_torque[4*findex+3] = torque[4*findex+0];
+            _desired_torque[4*findex+2] = torque[4*findex+1];
+            _desired_torque[4*findex+1] = torque[4*findex+2];
+            _desired_torque[4*findex+0] = torque[4*findex+3];
         }
-    
     }
     else {
         ROS_ERROR("CAN: Can not determine proper finger CAN channels. Check the Allegro Hand version number in 'zero.yaml'");
@@ -215,14 +316,14 @@ void AllegroHandDrv::getJointInfo(double *position)
 void AllegroHandDrv::_readDevices()
 {
     int err;
-    int id;    
+    char cmd, src, des;
     int len;
     unsigned char data[8];
 
-    err = CANAPI::can_read_message(_can_handle, &id, &len, data, FALSE, 0);
+    err = CANAPI::can_read_message(_can_handle, &cmd, &src, &des, &len, data, 0, 0);
     while (!err) {
-        _parseMessage(id, len, data);
-        err = CANAPI::can_read_message(_can_handle, &id, &len, data, FALSE, 0);
+        _parseMessage(cmd, src, des, len, data);
+        err = CANAPI::can_read_message(_can_handle, &cmd, &src, &des, &len, data, 0, 0);
     }
     //ROS_ERROR("can_read_message returns %d.", err); // PCAN_ERROR_QRCVEMPTY(32) from Peak CAN means "Receive queue is empty". It is not an error.
 }
@@ -237,7 +338,7 @@ void AllegroHandDrv::_writeDevices()
 
     // convert to torque to pwm
     for (int i = 0; i < DOF_JOINTS; i++) {
-        pwmDouble[i] = _desired_torque[i] * _tau_cov_const;
+        pwmDouble[i] = _desired_torque[i] * 1.0 * (double) _motor_direction[i] * _tau_cov_const;
 
         // limitation should be less than 800
         if (pwmDouble[i] > _pwm_max[i]) {
@@ -251,122 +352,78 @@ void AllegroHandDrv::_writeDevices()
     }
 
     for (int findex = 0; findex < 4; findex++) {
-        CANAPI::command_set_torque(_can_handle, findex, &pwm[findex*4]);
+        CANAPI::write_current(_can_handle, findex, &pwm[findex*4]);
         //ROS_INFO("write torque %d: %d %d %d %d", findex, pwm[findex*4+0], pwm[findex*4+1], pwm[findex*4+2], pwm[findex*4+3]);
     }
 }
 
-void AllegroHandDrv::_parseMessage(int id, int len, unsigned char* data)
+void AllegroHandDrv::_parseMessage(char cmd, char src, char des, int len, unsigned char* data)
 {
     int tmppos[4];
     int lIndexBase;
-    int i;
 
-    //v4 
-    switch (id) 
-    {
-        case ID_RTR_HAND_INFO:
-        {
-            printf(">CAN(%d): AllegroHand hardware version: 0x%02x%02x\n", _can_handle, data[1], data[0]);
-            printf("                      firmware version: 0x%02x%02x\n", data[3], data[2]);
-            printf("                      hardware type: %d(%s)\n", data[4], (data[4] == 0 ? "right" : "left"));
-            printf("                      temperature: %d (celsius)\n", data[5]);
-            printf("                      status: 0x%02x\n", data[6]);
-            printf("                      servo status: %s\n", (data[6] & 0x01 ? "ON" : "OFF"));
-            printf("                      high temperature fault: %s\n", (data[6] & 0x02 ? "ON" : "OFF"));
-            printf("                      internal communication fault: %s\n", (data[6] & 0x04 ? "ON" : "OFF"));
+    switch (cmd) {
+    case ID_CMD_QUERY_CONTROL_DATA:
+        if (src >= ID_DEVICE_SUB_01 && src <= ID_DEVICE_SUB_04) {
 
-            _hand_version = data[1];
-            if (_hand_version==4)
-            {
-                //v4
-                _tau_cov_const = 1200.0;
-                _input_voltage = 12.0;
-                _pwm_max_global = PWM_LIMIT_GLOBAL_12V;
-            } else
-            {
-                //v3
-                _tau_cov_const = 800.0;
-                _input_voltage = 8.0;
-                _pwm_max_global = PWM_LIMIT_GLOBAL_8V;
-            }
+            tmppos[0] = (int) (data[0] | (data[1] << 8));
+            tmppos[1] = (int) (data[2] | (data[3] << 8));
+            tmppos[2] = (int) (data[4] | (data[5] << 8));
+            tmppos[3] = (int) (data[6] | (data[7] << 8));
 
-            _pwm_max[eJOINTNAME_INDEX_0] = min(_pwm_max_global, PWM_LIMIT_ROLL);
-            _pwm_max[eJOINTNAME_INDEX_1] = min(_pwm_max_global, PWM_LIMIT_NEAR);
-            _pwm_max[eJOINTNAME_INDEX_2] = min(_pwm_max_global, PWM_LIMIT_MIDDLE);
-            _pwm_max[eJOINTNAME_INDEX_3] = min(_pwm_max_global, PWM_LIMIT_FAR);
+            lIndexBase = 4 * (src - ID_DEVICE_SUB_01);
 
-            _pwm_max[eJOINTNAME_MIDDLE_0] = min(_pwm_max_global, PWM_LIMIT_ROLL);
-            _pwm_max[eJOINTNAME_MIDDLE_1] = min(_pwm_max_global, PWM_LIMIT_NEAR);
-            _pwm_max[eJOINTNAME_MIDDLE_2] = min(_pwm_max_global, PWM_LIMIT_MIDDLE);
-            _pwm_max[eJOINTNAME_MIDDLE_3] = min(_pwm_max_global, PWM_LIMIT_FAR);
+            _curr_position[lIndexBase+0] = (double)_encoder_direction[lIndexBase+0] * (double)(tmppos[0] - 32768 - _encoder_offset[lIndexBase+0]) * ( 333.3 / 65536.0 ) * ( M_PI/180.0);
+            _curr_position[lIndexBase+1] = (double)_encoder_direction[lIndexBase+1] * (double)(tmppos[1] - 32768 - _encoder_offset[lIndexBase+1]) * ( 333.3 / 65536.0 ) * ( M_PI/180.0);
+            _curr_position[lIndexBase+2] = (double)_encoder_direction[lIndexBase+2] * (double)(tmppos[2] - 32768 - _encoder_offset[lIndexBase+2]) * ( 333.3 / 65536.0 ) * ( M_PI/180.0);
+            _curr_position[lIndexBase+3] = (double)_encoder_direction[lIndexBase+3] * (double)(tmppos[3] - 32768 - _encoder_offset[lIndexBase+3]) * ( 333.3 / 65536.0 ) * ( M_PI/180.0);
 
-            _pwm_max[eJOINTNAME_PINKY_0] = min(_pwm_max_global, PWM_LIMIT_ROLL);
-            _pwm_max[eJOINTNAME_PINKY_1] = min(_pwm_max_global, PWM_LIMIT_NEAR);
-            _pwm_max[eJOINTNAME_PINKY_2] = min(_pwm_max_global, PWM_LIMIT_MIDDLE);
-            _pwm_max[eJOINTNAME_PINKY_3] = min(_pwm_max_global, PWM_LIMIT_FAR);
-
-            _pwm_max[eJOINTNAME_THUMB_0] = min(_pwm_max_global, PWM_LIMIT_THUMB_ROLL);
-            _pwm_max[eJOINTNAME_THUMB_1] = min(_pwm_max_global, PWM_LIMIT_THUMB_NEAR);
-            _pwm_max[eJOINTNAME_THUMB_2] = min(_pwm_max_global, PWM_LIMIT_THUMB_MIDDLE);
-            _pwm_max[eJOINTNAME_THUMB_3] = min(_pwm_max_global, PWM_LIMIT_THUMB_FAR);
-            
-
+            _curr_position_get |= (0x01 << (src - ID_DEVICE_SUB_01));
+            //ROS_INFO("get position %d: %.1f, %.1f, %.1f, %.1f", (src - ID_DEVICE_SUB_01), _curr_position[lIndexBase+0], _curr_position[lIndexBase+1], _curr_position[lIndexBase+2], _curr_position[lIndexBase+3]);
         }
-            break;
-        case ID_RTR_SERIAL:
-        {
-            printf(">CAN(%d): AllegroHand serial number: SAH0%d0 %c%c%c%c%c%c%c%c\n", _can_handle, /*HAND_VERSION*/4
-                    , data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7]);
+        else {
+            ROS_WARN("No subdevice match!");
         }
-            break;
-        case ID_RTR_FINGER_POSE_1:
-        case ID_RTR_FINGER_POSE_2:
-        case ID_RTR_FINGER_POSE_3:
-        case ID_RTR_FINGER_POSE_4:
-        {
-            int findex = (id & 0x00000007);
+        break;
 
-            tmppos[0] = (short) (data[0] | (data[1] << 8));
-            tmppos[1] = (short) (data[2] | (data[3] << 8));
-            tmppos[2] = (short) (data[4] | (data[5] << 8));
-            tmppos[3] = (short) (data[6] | (data[7] << 8));
+    case ID_CMD_QUERY_STATE_DATA:
+        break;
 
-            lIndexBase = findex * 4;
+    case ID_CMD_QUERY_ID:
+        ROS_INFO("CAN: Allegro Hand PCB revision (%02x%02xh)", data[3], data[2]);
+        ROS_INFO("CAN: Allegro Hand firmware version (%02x%02xh)", data[5], data[4]);
+        ROS_INFO("CAN: Allegro Hand hardware type (%s)", (data[7] == 0 ? "Left" : "Right"));
+        break;
 
-            _curr_position[lIndexBase+0] = (double)(tmppos[0]) * ( 333.3 / 65536.0 ) * ( M_PI/180.0);
-            _curr_position[lIndexBase+1] = (double)(tmppos[1]) * ( 333.3 / 65536.0 ) * ( M_PI/180.0);
-            _curr_position[lIndexBase+2] = (double)(tmppos[2]) * ( 333.3 / 65536.0 ) * ( M_PI/180.0);
-            _curr_position[lIndexBase+3] = (double)(tmppos[3]) * ( 333.3 / 65536.0 ) * ( M_PI/180.0);
+    case ID_CMD_AHRS_POSE:
+        ROS_INFO("CAN: AHRS Roll  = %02x%02xh", data[0], data[1]);
+        ROS_INFO("CAN: AHRS Pitch = %02x%02xh", data[2], data[3]);
+        ROS_INFO("CAN: AHRS Yaw   = %02x%02xh", data[4], data[5]);
+        break;
 
-            _curr_position_get |= (0x01 << (findex));
-        }
-            break;
-        case ID_RTR_IMU_DATA:
-        {
-            printf(">CAN(%d): AHRS Roll : 0x%02x%02x\n", _can_handle, data[0], data[1]);
-            printf("               Pitch: 0x%02x%02x\n", data[2], data[3]);
-            printf("               Yaw  : 0x%02x%02x\n", data[4], data[5]);
-        }
-            break;
-        case ID_RTR_TEMPERATURE_1:
-        case ID_RTR_TEMPERATURE_2:
-        case ID_RTR_TEMPERATURE_3:
-        case ID_RTR_TEMPERATURE_4:
-        {
-            int sindex = (id & 0x00000007);
-            int celsius = (int)(data[0]      ) |
-                            (int)(data[1] << 8 ) |
-                            (int)(data[2] << 16) |
-                            (int)(data[3] << 24);
-            printf(">CAN(%d): Temperature[%d]: %d (celsius)\n", _can_handle, sindex, celsius);
-        }
-            break;
-        default:
-            ROS_WARN("unknown command %d, len %d", id, len);
-            for(int nd=0; nd<len; nd++)
-                printf("%d \n ", data[nd]);
-            return;
+    case ID_CMD_AHRS_ACC:
+        ROS_INFO("CAN: AHRS Acc(x) = %02x%02xh", data[0], data[1]);
+        ROS_INFO("CAN: AHRS Acc(y) = %02x%02xh", data[2], data[3]);
+        ROS_INFO("CAN: AHRS Acc(z) = %02x%02xh", data[4], data[5]);
+        break;
+
+    case ID_CMD_AHRS_GYRO:
+        ROS_INFO("CAN: AHRS Angular Vel(x) = %02x%02xh", data[0], data[1]);
+        ROS_INFO("CAN: AHRS Angular Vel(y) = %02x%02xh", data[2], data[3]);
+        ROS_INFO("CAN: AHRS Angular Vel(z) = %02x%02xh", data[4], data[5]);
+        break;
+
+    case ID_CMD_AHRS_MAG:
+        ROS_INFO("CAN: AHRS Magnetic Field(x) = %02x%02xh", data[0], data[1]);
+        ROS_INFO("CAN: AHRS Magnetic Field(x) = %02x%02xh", data[2], data[3]);
+        ROS_INFO("CAN: AHRS Magnetic Field(x) = %02x%02xh", data[4], data[5]);
+        break;
+
+    default:
+        ROS_WARN("unknown command %d, src %d, to %d, len %d", cmd, src, des, len);
+        for(int nd=0; nd<len; nd++)
+            printf("%d \n ", data[nd]);
+        return;
     }
 }
 
