@@ -2,6 +2,8 @@
 # included with the Allegro Hand ROS Package.
 # P and D gains for each of the 16 joints.
 
+
+# this set of gains seem to work fine when the hand lies flat on the table.
 gains_pd:
 # proportial
  p:
@@ -24,9 +26,9 @@ gains_pd:
   j23: 6
 
 #  Thumb finger
-  j30: 4
+  j30: 9
   j31: 9
-  j32: 12
+  j32: 10
   j33: 6
 
 #derivative
@@ -53,7 +55,4 @@ gains_pd:
   j30: 0.15
   j31: 0.15
   j32: 0.15
-  j33: 0.11
-
-
- 
+  j33: 0.2
