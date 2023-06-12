@@ -5,7 +5,7 @@ import os
 import numpy as np
 import yaml
 import csv
-
+import threading
 # Other ROS imports
 import rospy
 from sensor_msgs.msg import JointState
@@ -14,7 +14,7 @@ from sensor_msgs.msg import JointState
 from datetime import datetime
 from copy import deepcopy as copy
 from IPython import embed
-
+from std_msgs.msg import Header
 # Put proper path
 from allegro_hand.utils import *
 
@@ -36,19 +36,31 @@ class AllegroController(object):
             rospy.init_node('allegro_hand_node', anonymous=True)
         except:
             pass
-
+        self._jstate_lock = threading.RLock()
         rospy.Subscriber(JOINT_STATE_TOPIC, JointState, self._sub_callback_joint_state)
         rospy.Subscriber(GRAV_COMP_TOPIC, JointState, self._sub_callback_grav_comp)
         rospy.Subscriber(COMM_JOINT_STATE_TOPIC, JointState, self._sub_callback_cmd__joint_state)
 
-        self.joint_comm_publisher = rospy.Publisher(JOINT_COMM_TOPIC, JointState, queue_size=-1)
+        self.joint_comm_publisher = rospy.Publisher(JOINT_COMM_TOPIC, JointState, queue_size=1)
 
         self.current_joint_pose = DEFAULT_VAL
         self.grav_comp = DEFAULT_VAL
         self.cmd_joint_state = DEFAULT_VAL
+        self.jnt_names = None
+        time.sleep(1)
+        desired_js = JointState()
+        desired_js.header = Header()
+        desired_js.velocity = []
+        desired_js.effort = []
+        desired_js.position = []
+        desired_js.name = self.jnt_names
+        self.desired_js = desired_js
         
     def _sub_callback_joint_state(self, data):
-        self.current_joint_pose = data
+        with self._jstate_lock:
+            self.current_joint_pose = data
+        if self.jnt_names is None:
+            self.jnt_names = self.current_joint_pose.name
 
     def _sub_callback_grav_comp(self, data):
         self.grav_comp = data
@@ -57,43 +69,36 @@ class AllegroController(object):
         self.cmd_joint_state = data
       
     def set_joint_positions(self, desired_action = np.zeros(16), absolute = True):
-        if self.current_joint_pose == DEFAULT_VAL:
-            print('No joint data received!')
-            return
-
         action = self._clip(desired_action, MAX_ANGLE)
-        current_angles = self.current_joint_pose.position
+        
 
         if absolute is True:
             desired_angles = np.array(action)
         else:
-            desired_angles = np.array(action) + np.array(current_angles)
+            desired_angles = np.array(action) + self.get_joint_positions()
 
-        desired_js = copy(self.current_joint_pose)
-        desired_js.position = list(desired_angles)
-        desired_js.effort = list([])
+        self.desired_js.position = list(desired_angles)
+        self.desired_js.effort = []
+        self.desired_js.header.stamp = rospy.Time.now()
 
-        self.joint_comm_publisher.publish(desired_js)
+        self.joint_comm_publisher.publish(self.desired_js)
 
     def set_joint_torques(self, action=np.zeros(16)):
-        if self.current_joint_pose == None:
-            print('No joint data received!')
-            return
-
         action = self._clip(action, MAX_TORQUE)
         desired_torques = np.array(action)
 
-        desired_js = copy(self.current_joint_pose)
-        desired_js.position = list([])
-        desired_js.effort = list(desired_torques)
-        print('Applying the Desired Joint Torques:', desired_js.effort)
-        self.joint_comm_publisher.publish(desired_js)
+        self.desired_js.position = []
+        self.desired_js.effort = list(desired_torques)
+        print('Applying the Desired Joint Torques:', self.desired_js.effort)
+        self.joint_comm_publisher.publish(self.desired_js)
 
     def get_joint_positions(self):
         if self.current_joint_pose is None:
             print('No joint data received!')
             return
-        return np.array(self.current_joint_pose.position)
+        with self._jstate_lock:
+            jpos = np.array(self.current_joint_pose.position)
+        return jpos
 
     def _clip(self, action, value):
         return np.clip(action, -value, value)

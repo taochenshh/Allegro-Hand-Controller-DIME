@@ -58,7 +58,7 @@
   <arg name="CAN_DEVICE" default="/dev/pcanusb1" />
 
   <arg name="PARAMS_DIR" default="$(find allegro_hand_parameters)" />
-  <arg name="KEYBOARD" default="true" />
+  <arg name="KEYBOARD" default="false" />
 
   <!-- yaml param files for your hand can be found in parameters/zero_files/ -->
   <arg name="ZEROS" default="$(arg PARAMS_DIR)/zero.yaml"/>
@@ -127,6 +127,6 @@
   </node>
 
       <!-- Logger node -->
-  <node pkg="allegro_hand" type="logger.py" name="logger" if="$(arg LOG)"/>
+  <!-- <node pkg="allegro_hand" type="logger.py" name="logger" if="$(arg LOG)"/> -->
 
 </launch>
