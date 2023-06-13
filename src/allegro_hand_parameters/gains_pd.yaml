@@ -10,48 +10,48 @@ gains_pd:
   j00: 4
   j01: 6
   j02: 6
-  j03: 6
+  j03: 5.8
 
 #  Middle finger
   j10: 4
   j11: 6
   j12: 6
-  j13: 6
+  j13: 5.8
 
 #  Ring finger
-  j20: 2
+  j20: 4
   j21: 6
   j22: 6
-  j23: 6
+  j23: 5.8
 
 #  Thumb finger
-  j30: 6
+  j30: 9
   j31: 9
-  j32: 10
+  j32: 6.5
   j33: 6
 
 #derivative
  d:
 #  Index finger
-  j00: 0.1
+  j00: 0.14
   j01: 0.15
   j02: 0.15
-  j03: 0.13
+  j03: 0.2
 
 #  Middle finger
   j10: 0.15
   j11: 0.15
   j12: 0.15
-  j13: 0.13
+  j13: 0.2
   
 #  Ring finger
-  j20: 0.1
+  j20: 0.14
   j21: 0.15
   j22: 0.15
-  j23: 0.13
+  j23: 0.2
   
 #  Thumb finger
-  j30: 0.15
+  j30: 0.2
   j31: 0.15
-  j32: 0.15
-  j33: 0.15
+  j32: 0.28
+  j33: 0.2
