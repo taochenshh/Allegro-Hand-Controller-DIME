@@ -103,19 +103,19 @@
 
   <!-- NOTE: The joint_state_publisher is actually commanding *desired* joint
        angles. You can use the 'sim' controller to have a non-existent hand. -->
-  <node name="joint_states" pkg="joint_state_publisher" type="joint_state_publisher"
+  <!-- <node name="joint_states" pkg="joint_state_publisher" type="joint_state_publisher"
         if="$(arg JSP_GUI)">
     <remap from="joint_states" to="allegroHand/joint_cmd"/>
     <param name="use_gui" value="true"/>
-  </node>
+  </node> -->
 
   <!-- Joint States (angles) to Joint Transforms -->
-  <node name="jointState2tf"
+  <!-- <node name="jointState2tf"
         pkg="robot_state_publisher"
         type="robot_state_publisher">
     <remap from="tf" to="allegroHand/tf"/>
     <remap from="joint_states" to="allegroHand/joint_states"/>
-  </node>
+  </node> -->
 
   <!-- Keyboard handler (if arg KEYBOARD is true) -->
   <node name="keyboard"

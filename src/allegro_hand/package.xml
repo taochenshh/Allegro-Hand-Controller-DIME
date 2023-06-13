@@ -10,7 +10,7 @@
 
     <!-- dependencies -->
     <buildtool_depend>catkin</buildtool_depend>
-
+    <build_depend>pybind11_catkin</build_depend>
     <build_depend>allegro_hand_driver</build_depend>
     <!-- <build_depend>bhand</build_depend> -->
     <build_depend>libpcan</build_depend>
@@ -27,6 +27,8 @@
     <run_depend>roscpp</run_depend>
     <run_depend>sensor_msgs</run_depend>
     <run_depend>xacro</run_depend>
+    <run_depend>ll4ma_kdl</run_depend>
+    <run_depend>pybind11_catkin</run_depend>
 
     <!-- The export tag contains other, unspecified, tags -->
     <export>

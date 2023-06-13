@@ -21,14 +21,21 @@ AllegroNode::AllegroNode(bool sim /* = false */) {
   
   // Create arrays 16 long for each of the four joint state components
   current_joint_state.position.resize(DOF_JOINTS);
-  current_joint_state.velocity.resize(DOF_JOINTS);
-  current_joint_state.effort.resize(DOF_JOINTS);
-  current_joint_state.name.resize(DOF_JOINTS);
+
+  // WARNING: for unknown reason, if we publish too much info, the subscriber side has some wierd timing issue
+  // I tested it on ubuntu 20.04 with ros noetic.
+  // if we publish everything (velocity, effort, position, link name), the subscriber side can work in the right 
+  // frequeuncy with at most 14 joints. to reduce the amount of information being sent, I commented out the velocity and effort
+  // checkout the minimal example in allegro_hand/timing_issue/
+  
+  // current_joint_state.velocity.resize(DOF_JOINTS);
+  // current_joint_state.effort.resize(DOF_JOINTS);
+  // current_joint_state.name.resize(DOF_JOINTS);
 
   // Initialize values: joint names should match URDF, desired torque and
   // velocity are both zero.
   for (int i = 0; i < DOF_JOINTS; i++) {
-    current_joint_state.name[i] = jointNames[i];
+    // current_joint_state.name[i] = jointNames[i];
     desired_torque[i] = 0.0;
     current_velocity[i] = 0.0;
     current_position_filtered[i] = 0.0;
@@ -90,8 +97,8 @@ void AllegroNode::publishData() {
   current_joint_state.header.stamp = tnow;
   for (int i = 0; i < DOF_JOINTS; i++) {
     current_joint_state.position[i] = current_position_filtered[i];
-    current_joint_state.velocity[i] = current_velocity_filtered[i];
-    current_joint_state.effort[i] = desired_torque[i];
+    // current_joint_state.velocity[i] = current_velocity_filtered[i];
+    // current_joint_state.effort[i] = desired_torque[i];
   }
   joint_state_pub.publish(current_joint_state);
 }
