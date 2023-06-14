@@ -19,7 +19,7 @@ gains_pd:
   j13: 5.8
 
 #  Ring finger
-  j20: 4
+  j20: 5
   j21: 6
   j22: 6
   j23: 5.8
@@ -45,7 +45,7 @@ gains_pd:
   j13: 0.2
   
 #  Ring finger
-  j20: 0.14
+  j20: 0.15
   j21: 0.15
   j22: 0.15
   j23: 0.2
