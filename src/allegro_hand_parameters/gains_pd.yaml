@@ -26,8 +26,8 @@ gains_pd:
 
 #  Thumb finger
   j30: 9
-  j31: 9
-  j32: 6.5
+  j31: 7
+  j32: 6
   j33: 6
 
 #derivative
@@ -52,6 +52,6 @@ gains_pd:
   
 #  Thumb finger
   j30: 0.2
-  j31: 0.15
-  j32: 0.28
-  j33: 0.2
+  j31: 0.2
+  j32: 0.16
+  j33: 0.16
