@@ -9,7 +9,7 @@ def talker():
     js = JointState()
     js.header.stamp = rospy.Time.now()
     # when N<=14, it seems to be fine, when N>=15, the subscriber prints duplicated time stamps
-    N = 15
+    N = 16
     js.velocity = [1.5] * N
     js.effort = [1.5] * N
     js.position = [1.5] * N

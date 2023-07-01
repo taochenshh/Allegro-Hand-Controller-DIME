@@ -28,7 +28,7 @@ AllegroNode::AllegroNode(bool sim /* = false */) {
   // frequeuncy with at most 14 joints. to reduce the amount of information being sent, I commented out the velocity and effort
   // checkout the minimal example in allegro_hand/timing_issue/
   
-  // current_joint_state.velocity.resize(DOF_JOINTS);
+  current_joint_state.velocity.resize(DOF_JOINTS);
   // current_joint_state.effort.resize(DOF_JOINTS);
   // current_joint_state.name.resize(DOF_JOINTS);
 
@@ -97,7 +97,7 @@ void AllegroNode::publishData() {
   current_joint_state.header.stamp = tnow;
   for (int i = 0; i < DOF_JOINTS; i++) {
     current_joint_state.position[i] = current_position_filtered[i];
-    // current_joint_state.velocity[i] = current_velocity_filtered[i];
+    current_joint_state.velocity[i] = current_velocity_filtered[i];
     // current_joint_state.effort[i] = desired_torque[i];
   }
   joint_state_pub.publish(current_joint_state);
