@@ -100,6 +100,15 @@ class AllegroController(object):
         with self._jstate_lock:
             jpos = np.array(self.current_joint_pose.position)
         return jpos
+    
+    def get_joint_positions_and_velocities(self):
+        if self.current_joint_pose is None:
+            print('No joint data received!')
+            return
+        with self._jstate_lock:
+            jpos = np.array(self.current_joint_pose.position)
+            jvel = np.array(self.current_joint_pose.velocity)
+        return jpos, jvel
 
     def _clip(self, action, value):
         return np.clip(action, -value, value)
