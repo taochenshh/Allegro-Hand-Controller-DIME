@@ -26,6 +26,7 @@ public:
     void setJointPositions(std::vector<double> desired_action, bool absolute = true);
     void setJointTorques(std::vector<double> desired_torques);
     std::vector<double> getJointPositions();
+    std::pair<std::vector<double>, std::vector<double>> getJointPositionsAndVelocities();
 
     static void rosInit();
     static void rosSpinOnce();

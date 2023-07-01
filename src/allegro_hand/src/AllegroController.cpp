@@ -88,6 +88,12 @@ std::vector<double> AllegroController::getJointPositions()
     return current_joint_pose_.position;
 }
 
+std::pair<std::vector<double>, std::vector<double>> AllegroController::getJointPositionsAndVelocities()
+{
+    std::lock_guard<std::mutex> guard(mutex_);
+    return {current_joint_pose_.position, current_joint_pose_.velocity};
+}
+
 
 void AllegroController::rosInit()
 {
