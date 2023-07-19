@@ -13,7 +13,7 @@ gains_pd:
   j03: 5.8
 
 #  Middle finger
-  j10: 4
+  j10: 0.5
   j11: 6
   j12: 6
   j13: 5.8
@@ -39,7 +39,7 @@ gains_pd:
   j03: 0.2
 
 #  Middle finger
-  j10: 0.15
+  j10: 0.03
   j11: 0.15
   j12: 0.15
   j13: 0.2
