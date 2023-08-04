@@ -7,26 +7,26 @@ gains_pd:
 # proportial
  p:
 #  Index finger
-  j00: 4
+  j00: 3.5
   j01: 6
   j02: 6
   j03: 5.3
 
 #  Middle finger
-  j10: 0.5
+  j10: 0.48
   j11: 6
   j12: 6
   j13: 5.3
 
 #  Ring finger
-  j20: 5
+  j20: 4.2
   j21: 6
   j22: 6
   j23: 5.3
 
 #  Thumb finger
   j30: 9
-  j31: 7
+  j31: 6.5
   j32: 6
   j33: 4.6
 
@@ -52,6 +52,6 @@ gains_pd:
   
 #  Thumb finger
   j30: 0.2
-  j31: 0.2
+  j31: 0.17
   j32: 0.16
   j33: 0.16
