@@ -24,8 +24,8 @@ vector<double> K_p(16);
 vector<double> K_d(16);
 
 // Initial limits.
-double max_delta_q = 0.3;
-double max_tau_des = 0.85;
+double max_delta_q = 1.;
+double max_tau_des = 1.3;
 
 // Loop rate < 333Hz is recommended since states are received at 333Hz.
 double loop_rate = 300.0;
