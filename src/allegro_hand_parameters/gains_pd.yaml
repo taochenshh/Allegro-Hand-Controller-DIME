@@ -7,7 +7,7 @@ gains_pd:
 # proportial
  p:
 #  Index finger
-  j00: 3.5
+  j00: 3.3
   j01: 6
   j02: 6
   j03: 5.3
@@ -33,7 +33,7 @@ gains_pd:
 #derivative
  d:
 #  Index finger
-  j00: 0.1
+  j00: 0.125
   j01: 0.15
   j02: 0.15
   j03: 0.2
